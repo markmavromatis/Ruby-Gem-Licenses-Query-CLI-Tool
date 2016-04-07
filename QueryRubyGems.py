@@ -1,8 +1,7 @@
-#!/Library/Frameworks/Python.framework/Versions/3.5/bin/python3.5
+#!/usr/bin/python
 
 import urllib.request
 import json
-import codecs
 import sys
 
 import logging
@@ -39,8 +38,6 @@ def arguments_sufficient(args):
 # Parse arguments and return the gem name and gem version
 def parse_arguments(arguments):
 
-    print("******")
-    print("Arguments = " + str(arguments))
     gem_name = arguments[1]
     gem_version = ""
 
@@ -56,6 +53,14 @@ def display_ruby_gem_details(gem_name, ruby_gem_details):
     description += ", License = {}".format(ruby_gem_details['licenses'])
     print(description)
 
+def display_error(message):
+    print("**********************")
+    print("Error encountered:")
+    print()
+    print(message)
+    print("**********************")
+
+
 def main():
 
     # Parse command-line arguments
@@ -70,9 +75,6 @@ def main():
     print("Querying for gem w/name: {}".format(gem_name))
     print("Version: {}".format(gem_version))
 
-    logging.debug("Initializing UTF-8 reader...")
-    reader = codecs.getreader("utf-8")
-
     base_url = "https://rubygems.org/api/v1/versions/"
     queryPackage = gem_name
 
@@ -85,11 +87,22 @@ def main():
         req = urllib.request.Request(complete_url)
         with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode('utf-8'))
-    except Exception as e:
-        logging.error(e)
-        print("Unable to connect to remote service: {}".format(e))
-        print("Please check your internet connection (and Ruby Gems service URL) and try again.")
-        raise("Failed to connect to remote web service.", e)
+    except urllib.error.HTTPError as err:
+        message = ""
+        if err.code == 404:
+            message = "Resource not found. Perhaps this ruby gem does not exist?"
+        else:
+            message = "Unable to connect to remote service: {}".format(err)
+        display_error(message)
+        logging.error(err)
+        return
+
+    except Exception as err:
+       message = "Unable to connect to remote service: {}".format(err)
+       message += "\nPerhaps the internet connection is down?"
+       display_error(message)
+       logging.error(err)
+       return
 
     logging.debug("Web service call succeeded. Response received")
 
